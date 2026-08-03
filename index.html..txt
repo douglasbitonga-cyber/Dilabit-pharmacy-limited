@@ -74,7 +74,7 @@
         <section class="hero">
             <span class="badge">Open 24 Hours</span>
             <h1>About Dilabit Pharmacy Limited</h1>
-            <p><strong>Dilabit Pharmacy Limited</strong> is a registered 24-hour retail pharmacy located along Outering Road in Pipeline, Embakasi, Nairobi. We are dedicated to providing round-the-clock access to genuine pharmaceuticals, health counseling, and essential medical supplies.</p>
+            <p><strong>Dilabit Pharmacy Limited</strong> is a registered 24-hour retail pharmacy located along Outering Road in Pipeline, Embakasi, Nairobi. We are dedicated to providing round-the-clo[...]</p>
         </section>
 
         <h2 class="section-title">Key Details</h2>
@@ -195,7 +195,7 @@
         <section class="hero">
             <span class="badge">Open 24 Hours</span>
             <h1>About Dilabit Pharmacy Limited</h1>
-            <p><strong>Dilabit Pharmacy Limited</strong> is a registered 24-hour retail pharmacy located along Outering Road in Pipeline, Embakasi, Nairobi. We are dedicated to providing round-the-clock access to genuine pharmaceuticals, health counseling, and essential medical supplies.</p>
+            <p><strong>Dilabit Pharmacy Limited</strong> is a registered 24-hour retail pharmacy located along Outering Road in Pipeline, Embakasi, Nairobi. We are dedicated to providing round-the-clo[...]</p>
         </section>
 
         <h2 class="section-title">Key Details</h2>
