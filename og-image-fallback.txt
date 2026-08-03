@@ -1,0 +1,10 @@
+OG image PNG fallback instructions and placeholder info:
+
+I did not generate a PNG due to binary encoding constraints. To create a PNG fallback, you can:
+
+1. Convert og-image.svg to PNG locally (recommended size 1200x630):
+   - Using ImageMagick: `convert -background none -resize 1200x630 og-image.svg og-image.png`
+   - Using rsvg-convert: `rsvg-convert -w 1200 -h 630 -o og-image.png og-image.svg`
+2. Commit og-image.png to the repository root.
+
+If you want, I can generate and add the PNG for you — confirm and I'll add it to the branch.
