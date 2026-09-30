@@ -6,7 +6,7 @@
 #define MyAppExeName "Dilabit_Pharmacy_POS.exe"
 
 [Setup]
-AppId={{D3F9B2C1-8E41-4190-9A31-8B61C80221FE}
+AppId={{D3F9B2C1-8E41-4190-9A31-8B61C80221FE}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
