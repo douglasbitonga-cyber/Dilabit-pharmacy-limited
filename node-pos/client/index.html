@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f2937">
+  <title>Dilabit Pharmacy POS</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; color: #1f2937; }
+    #app { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
+    .form { display: grid; gap: 12px; max-width: 400px; }
+    input, button, select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 14px; }
+    button { background: #1f2937; color: white; border: none; cursor: pointer; }
+    button.secondary { background: #e5e7eb; color: #1f2937; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; background: #1f2937; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+    .topbar nav { display: flex; gap: 15px; }
+    .topbar a { color: white; text-decoration: none; cursor: pointer; }
+    .metric { background: #eff6ff; padding: 16px; border-radius: 8px; text-align: center; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const API = {
+      async request(path, opts = {}) {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+        const res = await fetch(`/api${path}`, { ...opts, headers });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      },
+      login: (u, p) => this.request('/auth/login', { method: 'POST', body: JSON.stringify({ username: u, pin: p }) }),
+      getDailySales: () => this.request('/reports/daily').catch(() => ({ sales_count: 0, total_sales: 0 })),
+      getLowStock: () => this.request('/reports/low-stock').catch(() => []),
+      searchProducts: (q) => this.request(`/products/search?q=${encodeURIComponent(q)}`),
+      createSale: (items, type) => this.request('/sales', { method: 'POST', body: JSON.stringify({ items, payment_type: type }) })
+    };
+
+    const app = document.getElementById('app');
+    const token = localStorage.getItem('token');
+
+    function renderLogin() {
+      app.innerHTML = `
+        <div class="card" style="max-width: 400px; margin: 100px auto;">
+          <h2>Dilabit Pharmacy POS</h2>
+          <form id="loginForm" class="form">
+            <input name="username" placeholder="Username" required />
+            <input name="pin" type="password" placeholder="PIN" required />
+            <button type="submit">Login</button>
+          </form>
+        </div>
+      `;
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const d = new FormData(e.target);
+        try {
+          const r = await API.login(d.get('username'), d.get('pin'));
+          localStorage.setItem('token', r.token);
+          localStorage.setItem('user', JSON.stringify(r.user));
+          renderDashboard();
+        } catch (err) { alert(err.message); }
+      });
+    }
+
+    async function renderDashboard() {
+      const sales = await API.getDailySales();
+      const low = await API.getLowStock();
+      app.innerHTML = `
+        <header class="topbar">
+          <div><strong>Dilabit Pharmacy POS</strong></div>
+          <nav>
+            <a onclick="renderDashboard()">Dashboard</a>
+            <a onclick="renderPOS()">POS</a>
+            <a onclick="renderReports()">Reports</a>
+            <a onclick="logout()">Logout</a>
+          </nav>
+        </header>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div class="card metric">
+            <h3>Sales Today</h3>
+            <p style="font-size: 24px; font-weight: bold;">${sales.total_sales || 0}</p>
+          </div>
+          <div class="card metric">
+            <h3>Low Stock Items</h3>
+            <p style="font-size: 24px; font-weight: bold;">${low.length || 0}</p>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Quick Actions</h3>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="renderPOS()">New Sale</button>
+            <button class="secondary" onclick="renderReports()">Reports</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function renderPOS() {
+      app.innerHTML = `
+        <header class="topbar">
+          <div><strong>Point of Sale</strong></div>
+          <nav>
+            <a onclick="renderDashboard()">Back</a>
+          </nav>
+        </header>
+        <div class="card">
+          <h2>Search Products</h2>
+          <div style="display: flex; gap: 10px;">
+            <input id="productSearch" placeholder="Product name or barcode" />
+            <button onclick="searchProducts()">Search</button>
+          </div>
+          <div id="results" style="margin-top: 16px;"></div>
+        </div>
+        <div class="card">
+          <h3>Basket</h3>
+          <table><thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody id="basket"></tbody></table>
+          <div style="margin-top: 12px;"><strong>Total: </strong><span id="total">0</span></div>
+        </div>
+        <div class="card">
+          <button onclick="finalizeSale()">Finalize Sale (Cash)</button>
+        </div>
+      `;
+      window.basket = [];
+      window.searchProducts = async () => {
+        const q = document.getElementById('productSearch').value.trim();
+        if (!q) return;
+        try {
+          const prods = await API.searchProducts(q);
+          const res = document.getElementById('results');
+          res.innerHTML = '';
+          prods.forEach(p => {
+            const btn = document.createElement('button');
+            btn.textContent = `${p.name} - ${p.selling_price}`;
+            btn.onclick = () => {
+              const existing = basket.find(b => b.id === p.id);
+              if (existing) existing.qty += 1;
+              else basket.push({ ...p, qty: 1 });
+              updateBasket();
+            };
+            res.appendChild(btn);
+          });
+        } catch (err) { alert(err.message); }
+      };
+      window.updateBasket = () => {
+        const tbody = document.getElementById('basket');
+        tbody.innerHTML = '';
+        let total = 0;
+        basket.forEach(item => {
+          const tr = document.createElement('tr');
+          const t = item.qty * item.selling_price;
+          total += t;
+          tr.innerHTML = `<td>${item.name}</td><td>${item.qty}</td><td>${item.selling_price}</td><td>${t}</td>`;
+          tbody.appendChild(tr);
+        });
+        document.getElementById('total').textContent = total.toFixed(2);
+      };
+      window.finalizeSale = async () => {
+        if (!basket.length) { alert('Basket is empty'); return; }
+        try {
+          const r = await API.createSale(basket.map(i => ({ product_id: i.id, quantity: i.qty, unit_price: i.selling_price })), 'cash');
+          alert(`Sale created: ${r.id}`);
+          basket = [];
+          renderDashboard();
+        } catch (err) { alert(err.message); }
+      };
+    }
+
+    async function renderReports() {
+      const sales = await API.getDailySales();
+      const low = await API.getLowStock();
+      app.innerHTML = `
+        <header class="topbar">
+          <div><strong>Reports</strong></div>
+          <nav><a onclick="renderDashboard()">Back</a></nav>
+        </header>
+        <div class="card">
+          <h2>Daily Summary</h2>
+          <table>
+            <tr><td>Sales Count</td><td>${sales.sales_count || 0}</td></tr>
+            <tr><td>Total Sales</td><td>${sales.total_sales || 0}</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h2>Low Stock Items</h2>
+          <table>
+            <thead><tr><th>Product</th><th>Stock</th></tr></thead>
+            <tbody>
+              ${low.map(p => `<tr><td>${p.name}</td><td>${p.stock_on_hand || 0}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    window.logout = () => { localStorage.clear(); renderLogin(); };
+
+    if (token) renderDashboard();
+    else renderLogin();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

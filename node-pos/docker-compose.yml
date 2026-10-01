@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: dilabit_pos_db
+    environment:
+      POSTGRES_DB: dilabit_pharmacy_pos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dilabit_pos_app
+    environment:
+      PORT: 3000
+      JWT_SECRET: replace_with_strong_secret
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: dilabit_pharmacy_pos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      CORS_ORIGIN: http://localhost:3000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: sh -c "npm run migrate && npm run seed && npm start"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: dilabit_pos_network
